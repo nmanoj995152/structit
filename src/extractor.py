@@ -181,10 +181,16 @@ def _extract_with_rules(
         structured["error"] = "No readable OCR text found."
     elif status == "failed":
         status = "partial"
-        structured["warning"] = "OCR text was readable, but extraction was incomplete."
+        structured["warning"] = (
+            "I could read some text, but not enough to fill every field. "
+            "Open JSON to review what was found, or try a clearer image."
+        )
         structured["raw_ocr_excerpt"] = ocr_text[:500]
     elif status == "partial":
-        structured["warning"] = "Extracted with local rule-based fallback."
+        structured["warning"] = (
+            "Processed locally. Some fields may need review because the bill "
+            "text was not clear enough."
+        )
     return structured, status
 
 
