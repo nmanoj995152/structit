@@ -1,9 +1,9 @@
-"""Moondream2 VLM integration via llama-cpp-python."""
+"""Optional local VLM integration via llama-cpp-python."""
 
 import os
-import base64
 import threading
 from pathlib import Path
+
 from llama_cpp import Llama
 
 # Path where models are stored
@@ -35,14 +35,8 @@ def _get_model() -> Llama:
 
 
 def describe_bill_image(image_bytes: bytes) -> str:
-    """
-    Send image to Moondream2 and get a layout description.
-    Falls back gracefully if inference times out.
-    """
+    """Return a local visual description when a GGUF VLM is installed."""
     model = _get_model()
-
-    # Encode image as base64 for the prompt
-    b64_image = base64.b64encode(image_bytes).decode("utf-8")
 
     prompt = (
         "Describe the layout and content of this bill or receipt image. "
@@ -67,7 +61,7 @@ def describe_bill_image(image_bytes: bytes) -> str:
             result_holder["done"] = True
 
     # Run inference in a thread so we can enforce a timeout
-    thread = threading.Thread(target=_run_inference)
+    thread = threading.Thread(target=_run_inference, daemon=True)
     thread.start()
     thread.join(timeout=VLM_TIMEOUT_SECONDS)
 

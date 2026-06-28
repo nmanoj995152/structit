@@ -2,6 +2,7 @@
 
 import os
 from pathlib import Path
+
 from llama_cpp import Llama
 
 MODELS_DIR = Path.home() / ".pixstruct" / "models"
@@ -32,7 +33,11 @@ def run_slm(prompt: str, system_prompt: str) -> str:
     """Run Phi-3 Mini with a system prompt and user prompt. Returns raw string."""
     model = _get_model()
 
-    full_prompt = f"<|system|>\n{system_prompt}<|end|>\n<|user|>\n{prompt}<|end|>\n<|assistant|>\n"
+    full_prompt = (
+        f"<|system|>\n{system_prompt}<|end|>\n"
+        f"<|user|>\n{prompt}<|end|>\n"
+        "<|assistant|>\n"
+    )
 
     response = model(
         full_prompt,

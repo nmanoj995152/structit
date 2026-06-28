@@ -1,9 +1,8 @@
 """SQLite database layer for PixStruct."""
 
-import sqlite3
 import json
+import sqlite3
 from pathlib import Path
-from datetime import datetime
 
 DB_DIR = Path.home() / ".pixstruct"
 DB_PATH = DB_DIR / "data.db"
@@ -26,6 +25,7 @@ def init_db() -> None:
             bill_type   TEXT NOT NULL,
             status      TEXT DEFAULT 'success',
             image_path  TEXT,
+            input_hash  TEXT,
             raw_ocr     TEXT,
             structured  TEXT NOT NULL,
             total       REAL,
@@ -52,8 +52,27 @@ def init_db() -> None:
             error       TEXT
         );
     """)
+    _ensure_column(conn, "bills", "input_hash", "TEXT")
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_bills_input_hash ON bills(input_hash)")
     conn.commit()
     conn.close()
+
+
+def _ensure_column(
+    conn: sqlite3.Connection,
+    table_name: str,
+    column_name: str,
+    column_definition: str,
+) -> None:
+    columns = {
+        row["name"]
+        for row in conn.execute(f"PRAGMA table_info({table_name})").fetchall()
+    }
+    if column_name not in columns:
+        conn.execute(
+            f"ALTER TABLE {table_name} "
+            f"ADD COLUMN {column_name} {column_definition}"
+        )
 
 
 def insert_bill(
@@ -62,6 +81,7 @@ def insert_bill(
     raw_ocr: str = "",
     status: str = "success",
     image_path: str = "",
+    input_hash: str = "",
 ) -> int:
     """Insert a bill record. Returns new bill ID."""
     conn = _get_connection()
@@ -73,25 +93,57 @@ def insert_bill(
 
     cursor = conn.execute(
         """INSERT INTO bills
-           (bill_type, status, image_path, raw_ocr, structured, total, vendor, bill_date)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-        (bill_type, status, image_path, raw_ocr,
-         json.dumps(structured), total, vendor, bill_date),
+           (bill_type, status, image_path, input_hash, raw_ocr,
+            structured, total, vendor, bill_date)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+        (
+            bill_type,
+            status,
+            image_path,
+            input_hash,
+            raw_ocr,
+            json.dumps(structured),
+            total,
+            vendor,
+            bill_date,
+        ),
     )
     bill_id = cursor.lastrowid
 
     # Insert line items into their own table
     for item in structured.get("line_items", []):
         conn.execute(
-            """INSERT INTO line_items (bill_id, description, quantity, unit_price, total)
+            """INSERT INTO line_items
+               (bill_id, description, quantity, unit_price, total)
                VALUES (?, ?, ?, ?, ?)""",
-            (bill_id, item.get("description"), item.get("quantity", 1),
-             item.get("unit_price"), item.get("total")),
+            (
+                bill_id,
+                item.get("description"),
+                item.get("quantity", 1),
+                item.get("unit_price"),
+                item.get("total"),
+            ),
         )
 
     conn.commit()
     conn.close()
     return bill_id
+
+
+def get_bill_by_hash(input_hash: str) -> dict | None:
+    """Fetch the newest bill record for the same input hash."""
+    if not input_hash:
+        return None
+
+    conn = _get_connection()
+    row = conn.execute(
+        "SELECT id FROM bills WHERE input_hash = ? ORDER BY created_at DESC LIMIT 1",
+        (input_hash,),
+    ).fetchone()
+    conn.close()
+    if row is None:
+        return None
+    return get_bill(int(row["id"]))
 
 
 def get_bill(bill_id: int) -> dict | None:

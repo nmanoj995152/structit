@@ -3,92 +3,90 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>PixStruct — Offline Bill Intelligence</title>
+  <title>PixStruct - Offline Bill Intelligence</title>
   <link rel="manifest" href="/static/manifest.json"/>
-  <script src="https://unpkg.com/htmx.org@1.9.12/dist/htmx.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: system-ui, sans-serif; background: #f5f5f5; color: #1a1a1a; }
-    header { background: #1a1a2e; color: #fff; padding: 1rem 2rem; display: flex; align-items: center; gap: 1rem; }
-    header h1 { font-size: 1.25rem; font-weight: 600; }
-    header span { font-size: 0.8rem; background: #00b894; padding: 2px 8px; border-radius: 99px; }
-    main { max-width: 860px; margin: 2rem auto; padding: 0 1rem; }
-
-    /* Upload zone */
+    body { font-family: system-ui, -apple-system, Segoe UI, sans-serif; background: #f6f7f9; color: #181a1f; }
+    header { background: #20242b; color: #fff; padding: 1rem 2rem; display: flex; align-items: center; gap: 1rem; }
+    header h1 { font-size: 1.25rem; font-weight: 650; letter-spacing: 0; }
+    header span { font-size: 0.8rem; background: #16885f; padding: 2px 8px; border-radius: 99px; }
+    main { max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
     #drop-zone {
-      border: 2px dashed #ccc; border-radius: 12px; padding: 3rem;
+      border: 2px dashed #b9bec8; border-radius: 8px; padding: 2.5rem;
       text-align: center; cursor: pointer; background: #fff;
       transition: border-color 0.2s, background 0.2s;
     }
-    #drop-zone.hover { border-color: #6c63ff; background: #f0eeff; }
-    #drop-zone p { color: #666; margin-top: 0.5rem; font-size: 0.9rem; }
+    #drop-zone.hover { border-color: #375c9f; background: #eef3fb; }
+    #drop-zone p { color: #5f6673; margin-top: 0.5rem; font-size: 0.9rem; }
     #drop-zone input { display: none; }
-
-    /* Progress */
+    .upload-icon { font-size: 2.2rem; margin-bottom: 0.25rem; }
     #progress { display: none; margin: 1.5rem 0; }
     .stages { display: flex; gap: 0.5rem; flex-wrap: wrap; }
     .stage {
-      padding: 4px 12px; border-radius: 99px; font-size: 0.8rem;
-      background: #eee; color: #666;
+      min-width: 70px; text-align: center; padding: 5px 10px; border-radius: 999px;
+      font-size: 0.8rem; background: #e6e8ed; color: #555d6b;
     }
-    .stage.active { background: #6c63ff; color: #fff; }
-    .stage.done { background: #00b894; color: #fff; }
-
-    /* Bill cards */
+    .stage.active { background: #375c9f; color: #fff; }
+    .stage.done { background: #16885f; color: #fff; }
+    #notice { min-height: 1.4rem; margin-top: 1rem; color: #9a5b00; font-size: 0.9rem; }
     #bills { margin-top: 2rem; }
-    #bills h2 { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: #444; }
+    #bills h2 { font-size: 1rem; font-weight: 650; margin-bottom: 1rem; color: #333942; }
     .bill-card {
-      background: #fff; border-radius: 10px; padding: 1rem 1.25rem;
-      margin-bottom: 1rem; border: 1px solid #e5e5e5;
+      background: #fff; border-radius: 8px; padding: 1rem 1.25rem;
+      margin-bottom: 1rem; border: 1px solid #e0e3e8;
     }
-    .bill-card-header { display: flex; justify-content: space-between; align-items: center; }
-    .bill-type { font-size: 0.75rem; background: #eee; padding: 2px 8px; border-radius: 99px; }
-    .bill-total { font-size: 1.1rem; font-weight: 700; color: #1a1a2e; }
-    .bill-meta { font-size: 0.8rem; color: #888; margin-top: 4px; }
-    .bill-actions { margin-top: 0.75rem; display: flex; gap: 0.5rem; }
+    .bill-card-header { display: flex; justify-content: space-between; align-items: start; gap: 1rem; }
+    .bill-type { font-size: 0.75rem; background: #eef0f4; padding: 2px 8px; border-radius: 999px; margin-left: 0.4rem; }
+    .bill-total { font-size: 1.1rem; font-weight: 750; color: #20242b; white-space: nowrap; }
+    .bill-meta { font-size: 0.8rem; color: #6a7280; margin-top: 4px; }
+    .bill-actions { margin-top: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
     .btn {
-      padding: 5px 14px; border-radius: 6px; font-size: 0.8rem;
-      border: 1px solid #ddd; background: #f9f9f9; cursor: pointer;
-      text-decoration: none; color: #333;
+      padding: 6px 13px; border-radius: 6px; font-size: 0.8rem;
+      border: 1px solid #cfd4dc; background: #fbfcfd; cursor: pointer;
+      text-decoration: none; color: #242932;
     }
-    .btn:hover { background: #eee; }
+    .btn:hover { background: #eef0f4; }
     .bill-json { display: none; margin-top: 0.75rem; }
     .bill-json pre {
-      background: #1a1a2e; color: #a8ff78; padding: 1rem;
-      border-radius: 8px; font-size: 0.75rem; overflow-x: auto;
-      max-height: 300px; overflow-y: auto;
+      background: #20242b; color: #cfffd9; padding: 1rem;
+      border-radius: 8px; font-size: 0.75rem; overflow: auto; max-height: 320px;
     }
-    .status-failed { border-left: 4px solid #e74c3c; }
-    .status-partial { border-left: 4px solid #f39c12; }
-    .status-success { border-left: 4px solid #00b894; }
+    .status-failed { border-left: 4px solid #c4382b; }
+    .status-partial { border-left: 4px solid #bf7700; }
+    .status-success { border-left: 4px solid #16885f; }
+    @media (max-width: 560px) {
+      header { padding: 0.85rem 1rem; }
+      #drop-zone { padding: 1.5rem 1rem; }
+      .bill-card-header { flex-direction: column; }
+      .bill-total { white-space: normal; }
+    }
   </style>
 </head>
 <body>
 <header>
-  <h1>⚡ PixStruct</h1>
-  <span>● Offline</span>
+  <h1>PixStruct</h1>
+  <span>Offline</span>
 </header>
 <main>
-  <!-- Upload zone -->
   <div id="drop-zone" onclick="document.getElementById('file-input').click()">
-    <div style="font-size:2.5rem">🧾</div>
-    <strong>Drop a bill image here</strong>
-    <p>Hospital bills, restaurant receipts, invoices — JPG, PNG, WEBP</p>
-    <input type="file" id="file-input" accept="image/*" onchange="handleFile(this.files[0])"/>
+    <div class="upload-icon" aria-hidden="true">[+]</div>
+    <strong>Drop a bill file here</strong>
+    <p>Receipts, invoices, and hospital bills - JPG, PNG, WEBP, or PDF</p>
+    <input type="file" id="file-input" accept="image/*,application/pdf" onchange="handleFile(this.files[0])"/>
   </div>
 
-  <!-- Processing progress -->
   <div id="progress">
-    <p style="margin-bottom:0.5rem;font-size:0.9rem;color:#444">Processing...</p>
+    <p style="margin-bottom:0.5rem;font-size:0.9rem;color:#444">Processing locally...</p>
     <div class="stages">
       <span class="stage" id="s-ocr">OCR</span>
-      <span class="stage" id="s-vlm">VLM</span>
-      <span class="stage" id="s-slm">SLM</span>
+      <span class="stage" id="s-vlm">Vision</span>
+      <span class="stage" id="s-slm">Extract</span>
       <span class="stage" id="s-save">Saved</span>
     </div>
   </div>
+  <div id="notice"></div>
 
-  <!-- Bills list -->
   <div id="bills">
     <h2>Processed bills</h2>
     <div id="bills-list"></div>
@@ -96,13 +94,12 @@
 </main>
 
 <script>
-  // Register service worker for offline support
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/static/sw.js');
+    navigator.serviceWorker.register('/static/sw.js').catch(() => {});
   }
 
-  // Drag and drop
   const zone = document.getElementById('drop-zone');
+  const notice = document.getElementById('notice');
   zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('hover'); });
   zone.addEventListener('dragleave', () => zone.classList.remove('hover'));
   zone.addEventListener('drop', e => {
@@ -111,60 +108,75 @@
     if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]);
   });
 
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
+
   function setStage(stage) {
-    ['ocr','vlm','slm','save'].forEach(s => {
+    const stages = ['ocr', 'vlm', 'slm', 'save'];
+    stages.forEach(s => {
       const el = document.getElementById('s-' + s);
-      const stages = ['ocr','vlm','slm','save'];
       const idx = stages.indexOf(s);
       const current = stages.indexOf(stage);
-      if (idx < current) el.className = 'stage done';
-      else if (idx === current) el.className = 'stage active';
-      else el.className = 'stage';
+      el.className = idx < current ? 'stage done' : idx === current ? 'stage active' : 'stage';
     });
   }
 
   async function handleFile(file) {
     if (!file) return;
+    notice.textContent = '';
     document.getElementById('progress').style.display = 'block';
     setStage('ocr');
 
-    // Simulate stage progression while waiting
     const stageTimer = setInterval(() => {
       const active = document.querySelector('.stage.active');
       if (active && active.id !== 's-save') {
         const next = active.nextElementSibling;
         if (next) { active.className = 'stage done'; next.className = 'stage active'; }
       }
-    }, 15000);
+    }, 8000);
 
     const formData = new FormData();
     formData.append('file', file);
 
     try {
       const res = await fetch('/extract', { method: 'POST', body: formData });
+      const data = await res.json();
       clearInterval(stageTimer);
       setStage('save');
       document.getElementById('s-save').className = 'stage done';
 
-      const data = await res.json();
       if (!res.ok) {
-        alert('Error: ' + (data.detail || 'Processing failed'));
+        notice.textContent = data.detail || 'Processing failed.';
       } else {
+        if (data.status !== 'success') {
+          notice.textContent = data.structured?.warning || data.structured?.error || 'Saved with warnings.';
+        }
         await loadBills();
       }
     } catch (e) {
       clearInterval(stageTimer);
-      alert('Error: ' + e.message);
+      notice.textContent = 'Request failed: ' + e.message;
     }
 
     setTimeout(() => {
       document.getElementById('progress').style.display = 'none';
-    }, 1500);
+    }, 1200);
   }
 
-  function toggleJson(billId) {
+  async function toggleJson(billId) {
     const el = document.getElementById('json-' + billId);
-    el.style.display = el.style.display === 'block' ? 'none' : 'block';
+    const pre = el.querySelector('pre');
+    const open = el.style.display === 'block';
+    el.style.display = open ? 'none' : 'block';
+    if (!open && pre.dataset.loaded !== 'true') {
+      const r = await fetch('/bills/' + billId);
+      const d = await r.json();
+      pre.textContent = JSON.stringify(d.structured, null, 2);
+      pre.dataset.loaded = 'true';
+    }
   }
 
   async function loadBills() {
@@ -173,45 +185,35 @@
     const container = document.getElementById('bills-list');
 
     if (bills.length === 0) {
-      container.innerHTML = '<p style="color:#999;font-size:0.9rem">No bills yet. Upload one above.</p>';
+      container.innerHTML = '<p style="color:#777;font-size:0.9rem">No bills yet. Upload one above.</p>';
       return;
     }
 
     container.innerHTML = bills.map(b => `
-      <div class="bill-card status-${b.status}">
+      <div class="bill-card status-${escapeHtml(b.status)}">
         <div class="bill-card-header">
           <div>
-            <strong>${b.vendor || 'Unknown vendor'}</strong>
-            <span class="bill-type">${b.bill_type.replace('_', ' ')}</span>
+            <strong>${escapeHtml(b.vendor || 'Unknown vendor')}</strong>
+            <span class="bill-type">${escapeHtml(b.bill_type.replace('_', ' '))}</span>
           </div>
-          <div class="bill-total">₹${b.total ? b.total.toFixed(2) : '—'}</div>
+          <div class="bill-total">${b.total ? 'INR ' + Number(b.total).toFixed(2) : '-'}</div>
         </div>
-        <div class="bill-meta">${b.bill_date || 'Date unknown'} · ${b.status}</div>
+        <div class="bill-meta">${escapeHtml(b.bill_date || 'Date unknown')} &middot; ${escapeHtml(b.status)}</div>
         <div class="bill-actions">
-          <button class="btn" onclick="toggleJson(${b.id})">{ } JSON</button>
-          <a class="btn" href="/bills/${b.id}/export">⬇ Download</a>
+          <button class="btn" onclick="toggleJson(${Number(b.id)})">JSON</button>
+          <a class="btn" href="/bills/${Number(b.id)}/export">Download</a>
         </div>
-        <div class="bill-json" id="json-${b.id}">
+        <div class="bill-json" id="json-${Number(b.id)}">
           <pre>Loading...</pre>
         </div>
       </div>
     `).join('');
-
-    // Lazy-load JSON previews on toggle
-    document.querySelectorAll('.bill-json').forEach(el => {
-      const billId = el.id.replace('json-', '');
-      el.querySelector('pre').addEventListener('click', async () => {
-        if (el.querySelector('pre').textContent === 'Loading...') {
-          const r = await fetch('/bills/' + billId);
-          const d = await r.json();
-          el.querySelector('pre').textContent = JSON.stringify(d.structured, null, 2);
-        }
-      });
-    });
   }
 
-  // Load bills on page load
-  loadBills();
+  loadBills().catch(() => {
+    document.getElementById('bills-list').innerHTML =
+      '<p style="color:#777;font-size:0.9rem">Start the local backend to view saved bills.</p>';
+  });
 </script>
 </body>
 </html>
