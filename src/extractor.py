@@ -39,15 +39,12 @@ SUBTOTAL_PATTERN = (
     rf"{CURRENCY_PATTERN}\s*{AMOUNT_PATTERN}"
 )
 TAX_PATTERN = (
-    rf"(?:tax|gst|cgst|sgst|vat)\s*[:\-]?\s*"
-    rf"{CURRENCY_PATTERN}\s*{AMOUNT_PATTERN}"
+    rf"(?:tax|gst|cgst|sgst|vat)\s*[:\-]?\s*" rf"{CURRENCY_PATTERN}\s*{AMOUNT_PATTERN}"
 )
 TIP_PATTERN = rf"\btip\s*[:\-]?\s*{CURRENCY_PATTERN}\s*{AMOUNT_PATTERN}"
 TABLE_PATTERN = r"\btable\s*(?:no\.?|#)?\s*([A-Za-z0-9-]+)"
 LINE_SKIP_PATTERN = r"\b(total|subtotal|tax|gst|date|invoice|bill no|amount due)\b"
-LINE_AMOUNT_PATTERN = (
-    rf"{CURRENCY_PATTERN}\s*([0-9][0-9,\s]*(?:\.\d{{1,2}})?)\s*$"
-)
+LINE_AMOUNT_PATTERN = rf"{CURRENCY_PATTERN}\s*([0-9][0-9,\s]*(?:\.\d{{1,2}})?)\s*$"
 
 
 def extract_structured(
@@ -96,8 +93,7 @@ Extract all fields from this bill according to this JSON schema:
         retry_note = ""
         if attempt > 0:
             retry_note = (
-                f"\n\nPrevious attempt failed with: {last_error}\n"
-                "Return fixed JSON."
+                f"\n\nPrevious attempt failed with: {last_error}\n" "Return fixed JSON."
             )
 
         try:
@@ -126,17 +122,15 @@ def _extract_with_rules(
     bill_type: str,
 ) -> tuple[dict, str]:
     text = _normalize_text(f"{ocr_text}\n{vlm_description}")
+    line_items = _extract_line_items(text)
+    subtotal = _first_amount(SUBTOTAL_PATTERN, text)
     common = {
-        "line_items": _extract_line_items(text),
-        "subtotal": _first_amount(SUBTOTAL_PATTERN, text),
+        "line_items": line_items,
+        "subtotal": subtotal,
         "tax": _first_amount(TAX_PATTERN, text),
         "currency": _detect_currency(text),
     }
-    total = (
-        _extract_total(text)
-        or common["subtotal"]
-        or _sum_items(common["line_items"])
-    )
+    total = _extract_total(text) or subtotal or _sum_items(line_items)
     date = _extract_date(text)
     vendor = _extract_vendor(text)
 
@@ -197,10 +191,7 @@ def _extract_with_rules(
 def _clean_json_output(raw_output: str) -> str:
     clean = raw_output.strip()
     clean = (
-        clean.removeprefix("```json")
-        .removeprefix("```")
-        .removesuffix("```")
-        .strip()
+        clean.removeprefix("```json").removeprefix("```").removesuffix("```").strip()
     )
     start = clean.find("{")
     end = clean.rfind("}")
@@ -240,9 +231,7 @@ def _extract_line_items(text: str) -> list[dict]:
         if re.search(LINE_SKIP_PATTERN, clean_line, re.I):
             continue
 
-        amount_matches = list(
-            re.finditer(LINE_AMOUNT_PATTERN, clean_line, re.I)
-        )
+        amount_matches = list(re.finditer(LINE_AMOUNT_PATTERN, clean_line, re.I))
         if not amount_matches:
             continue
 

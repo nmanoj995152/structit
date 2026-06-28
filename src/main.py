@@ -9,6 +9,7 @@ from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from src.database import get_bill, init_db, list_bills
+from src.document_pipeline import process_document
 from src.pipeline import process_bill
 
 app = FastAPI(title="PixStruct", version="0.1.0")
@@ -30,11 +31,22 @@ async def index() -> str:
 @app.post("/extract")
 async def extract(file: UploadFile = File(...)):
     """Upload a bill file and extract structured data."""
-    allowed = {"image/jpeg", "image/png", "image/webp", "application/pdf"}
-    if file.content_type not in allowed:
+    filename = file.filename or ""
+    suffix = Path(filename).suffix.lower()
+    allowed = {
+        "image/jpeg",
+        "image/png",
+        "image/webp",
+        "application/pdf",
+        "text/plain",
+        "application/octet-stream",
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    }
+    allowed_suffixes = {".jpg", ".jpeg", ".png", ".webp", ".pdf", ".txt", ".docx"}
+    if file.content_type not in allowed and suffix not in allowed_suffixes:
         raise HTTPException(
             status_code=422,
-            detail="Only JPG, PNG, WEBP, and PDF files are accepted.",
+            detail="Only PDF, DOCX, TXT, JPG, PNG, and WEBP files are accepted.",
         )
 
     file_bytes = await file.read()
@@ -44,11 +56,18 @@ async def extract(file: UploadFile = File(...)):
         raise HTTPException(status_code=422, detail="File too large. Max 20MB.")
 
     try:
-        result = process_bill(
-            file_bytes,
-            image_path=file.filename or "",
-            content_type=file.content_type or "",
-        )
+        if suffix in {".txt", ".docx"} or file.content_type == "text/plain":
+            result = process_document(
+                file_bytes,
+                filename=filename or "document",
+                content_type=file.content_type or "",
+            )
+        else:
+            result = process_bill(
+                file_bytes,
+                image_path=file.filename or "",
+                content_type=file.content_type or "",
+            )
     except Exception as exc:
         raise HTTPException(
             status_code=500,

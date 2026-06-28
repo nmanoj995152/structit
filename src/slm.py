@@ -22,7 +22,7 @@ def _get_model() -> Llama:
             )
         _slm_model = Llama(
             model_path=str(model_path),
-            n_threads=max(1, os.cpu_count() - 1),
+            n_threads=max(1, (os.cpu_count() or 1) - 1),
             n_ctx=2048,
             verbose=False,
         )

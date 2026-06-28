@@ -51,9 +51,24 @@ def init_db() -> None:
             status      TEXT,
             error       TEXT
         );
+
+        CREATE TABLE IF NOT EXISTS documents (
+            id              INTEGER PRIMARY KEY AUTOINCREMENT,
+            filename        TEXT NOT NULL,
+            created_at      DATETIME DEFAULT CURRENT_TIMESTAMP,
+            input_hash      TEXT,
+            source_type     TEXT,
+            status          TEXT DEFAULT 'success',
+            raw_text        TEXT,
+            structured_json TEXT NOT NULL,
+            logs            TEXT
+        );
     """)
     _ensure_column(conn, "bills", "input_hash", "TEXT")
     conn.execute("CREATE INDEX IF NOT EXISTS idx_bills_input_hash ON bills(input_hash)")
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_documents_input_hash ON documents(input_hash)"
+    )
     conn.commit()
     conn.close()
 
@@ -70,8 +85,7 @@ def _ensure_column(
     }
     if column_name not in columns:
         conn.execute(
-            f"ALTER TABLE {table_name} "
-            f"ADD COLUMN {column_name} {column_definition}"
+            f"ALTER TABLE {table_name} " f"ADD COLUMN {column_name} {column_definition}"
         )
 
 
@@ -109,6 +123,9 @@ def insert_bill(
         ),
     )
     bill_id = cursor.lastrowid
+    if bill_id is None:
+        conn.close()
+        raise RuntimeError("SQLite did not return a bill id.")
 
     # Insert line items into their own table
     for item in structured.get("line_items", []):
@@ -150,9 +167,7 @@ def get_bill(bill_id: int) -> dict | None:
     """Fetch a full bill record with its line items."""
     conn = _get_connection()
 
-    row = conn.execute(
-        "SELECT * FROM bills WHERE id = ?", (bill_id,)
-    ).fetchone()
+    row = conn.execute("SELECT * FROM bills WHERE id = ?", (bill_id,)).fetchone()
 
     if row is None:
         conn.close()
@@ -180,6 +195,86 @@ def list_bills(limit: int = 50) -> list[dict]:
     ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+def insert_document(
+    filename: str,
+    raw_text: str,
+    structured_json: dict,
+    input_hash: str = "",
+    source_type: str = "",
+    status: str = "success",
+    logs: list[str] | None = None,
+) -> int:
+    """Insert a generic document extraction record."""
+    conn = _get_connection()
+    cursor = conn.execute(
+        """INSERT INTO documents
+           (filename, input_hash, source_type, status, raw_text, structured_json, logs)
+           VALUES (?, ?, ?, ?, ?, ?, ?)""",
+        (
+            filename,
+            input_hash,
+            source_type,
+            status,
+            raw_text,
+            json.dumps(structured_json),
+            json.dumps(logs or []),
+        ),
+    )
+    document_id = cursor.lastrowid
+    if document_id is None:
+        conn.close()
+        raise RuntimeError("SQLite did not return a document id.")
+    conn.commit()
+    conn.close()
+    return int(document_id)
+
+
+def get_document(document_id: int) -> dict | None:
+    """Fetch one generic document record."""
+    conn = _get_connection()
+    row = conn.execute(
+        "SELECT * FROM documents WHERE id = ?",
+        (document_id,),
+    ).fetchone()
+    conn.close()
+    if row is None:
+        return None
+
+    document = dict(row)
+    document["structured_json"] = json.loads(document["structured_json"])
+    document["logs"] = json.loads(document["logs"] or "[]")
+    return document
+
+
+def get_document_by_hash(input_hash: str) -> dict | None:
+    """Fetch the newest successful generic document record by input hash."""
+    if not input_hash:
+        return None
+    conn = _get_connection()
+    row = conn.execute(
+        """SELECT id FROM documents
+           WHERE input_hash = ? AND status = 'success'
+           ORDER BY created_at DESC LIMIT 1""",
+        (input_hash,),
+    ).fetchone()
+    conn.close()
+    if row is None:
+        return None
+    return get_document(int(row["id"]))
+
+
+def list_documents(limit: int = 100) -> list[dict]:
+    """Return recent generic document records."""
+    conn = _get_connection()
+    rows = conn.execute(
+        """SELECT id, filename, created_at, source_type, status
+           FROM documents ORDER BY created_at DESC LIMIT ?""",
+        (limit,),
+    ).fetchall()
+    conn.close()
+    return [dict(row) for row in rows]
 
 
 def log_stage(

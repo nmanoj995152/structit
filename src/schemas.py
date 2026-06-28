@@ -1,13 +1,12 @@
 """Pydantic schemas for bill types."""
 
 import re
-from enum import Enum
-from typing import Optional
+from enum import StrEnum
 
 from pydantic import BaseModel, Field, field_validator
 
 
-class BillType(str, Enum):
+class BillType(StrEnum):
     hospital = "hospital_bill"
     restaurant = "restaurant_receipt"
     invoice = "invoice"
@@ -41,14 +40,14 @@ class LineItem(BaseModel):
 
 class HospitalBill(BaseModel):
     type: BillType = BillType.hospital
-    patient_name: Optional[str] = None
-    patient_id: Optional[str] = None
-    date_of_service: Optional[str] = None
-    hospital_name: Optional[str] = None
+    patient_name: str | None = None
+    patient_id: str | None = None
+    date_of_service: str | None = None
+    hospital_name: str | None = None
     line_items: list[LineItem] = Field(default_factory=list)
-    subtotal: Optional[float] = None
-    insurance_adjustment: Optional[float] = None
-    tax: Optional[float] = None
+    subtotal: float | None = None
+    insurance_adjustment: float | None = None
+    tax: float | None = None
     total_due: float = 0.0
     currency: str = "INR"
 
@@ -66,16 +65,16 @@ class HospitalBill(BaseModel):
 
 class RestaurantReceipt(BaseModel):
     type: BillType = BillType.restaurant
-    vendor_name: Optional[str] = None
-    date: Optional[str] = None
-    time: Optional[str] = None
-    table_number: Optional[str] = None
+    vendor_name: str | None = None
+    date: str | None = None
+    time: str | None = None
+    table_number: str | None = None
     line_items: list[LineItem] = Field(default_factory=list)
-    subtotal: Optional[float] = None
-    tax: Optional[float] = None
-    tip: Optional[float] = None
+    subtotal: float | None = None
+    tax: float | None = None
+    tip: float | None = None
     total: float = 0.0
-    payment_method: Optional[str] = None
+    payment_method: str | None = None
     currency: str = "INR"
 
     @field_validator("total", "subtotal", "tax", "tip", mode="before")
@@ -86,14 +85,14 @@ class RestaurantReceipt(BaseModel):
 
 class Invoice(BaseModel):
     type: BillType = BillType.invoice
-    issuer_name: Optional[str] = None
-    receiver_name: Optional[str] = None
-    invoice_number: Optional[str] = None
-    date: Optional[str] = None
-    due_date: Optional[str] = None
+    issuer_name: str | None = None
+    receiver_name: str | None = None
+    invoice_number: str | None = None
+    date: str | None = None
+    due_date: str | None = None
     line_items: list[LineItem] = Field(default_factory=list)
-    subtotal: Optional[float] = None
-    tax: Optional[float] = None
+    subtotal: float | None = None
+    tax: float | None = None
     total: float = 0.0
     currency: str = "INR"
 
